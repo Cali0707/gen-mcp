@@ -1,0 +1,62 @@
+on:
+  workflow_dispatch:
+  create:
+    branches:
+      - 'release/v*.*'
+jobs:
+  create-prerelease:
+    runs-on: ubuntu-latest
+    if:
+      startsWith(github.ref, 'refs/heads/release/v')
+    permissions:
+      contents: write
+      pull-requests: write
+    strategy:
+      matrix:
+        goos: [linux, windows, darwin]
+        goarch: [amd64, arm64]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.4'
+
+      - name: Extract version from branch name
+        id: get_version
+        run: |
+          BRANCH_NAME="${{ github.ref }}"
+          VERSION=$(echo '${BRANCH_NAME##*/}' | sed 's/release\/v/v/')
+          PRERELEASE_VERSION="${VERSION}.0-prerelease"
+          echo "PRERELEASE_VERSION=$PRERELEASE_VERSION" >> "$GITHUB_ENV"
+
+      - name: Build genmcp
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          VERSION_TAG: $${ env.PRERELEASE_VERSION }}
+        run: |
+          CLI_NAME="genmcp"
+          OUTPUT_NAME="${CLI_NAME}-${GOOS}-${GOARCH}"
+
+          go build -o "${OUTPUT_NAME}" -ldflags="-X 'main.version=${VERSION_TAG}'"
+
+          if [ "${GOOS}" == "windows" ]; then
+            zip "${OUTPUT_NAME}.zip" "${OUTPUT_NAME}.exe"
+          else
+            zip "${OUTPUT_NAME.zip" "${OUTPUT_NAME}"
+          fi
+      - name: Create or update draft release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ env.PRERELEASE_VERSION }}
+          name: ${{ env.PRERELEASE_VERSION }}
+          draft: true
+          prerelease: true
+          files: |
+            *.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
