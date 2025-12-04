@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a focused unit test for the Prometheus query tool to ensure `.svc` URLs fall back to the routed endpoint (`test/query_prometheus_tool_test.go`). (#162)
 - Updated `.gitignore` to drop generated evaluation artifacts from version control. (#162)
 
+### Fixed
+- Http invocations which should set query params work now with urls that have no template variables. (#222)
+
 ## [v0.1.1]
 
 ### Added
